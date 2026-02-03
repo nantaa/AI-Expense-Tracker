@@ -5,7 +5,7 @@ const multer = require('multer');
 const Tesseract = require('tesseract.js');
 const fs = require('fs');
 const path = require('path');
-const { categorizeExpense } = require('../services/aiService');
+const { categorizeExpense, extractReceiptDetails } = require('../services/aiService');
 
 const prisma = new PrismaClient();
 const upload = multer({ dest: 'uploads/' });
@@ -25,23 +25,23 @@ router.get('/', async (req, res) => {
 
 // Add new expense
 router.post('/', async (req, res) => {
-    const { description, amount, date, userId, categoryId } = req.body;
+    const { description, amount, date, userId, categoryId, items } = req.body; // Added items
     try {
 
         // AI Categorization if not provided
         let finalCategoryId = categoryId ? parseInt(categoryId) : null;
 
         if (!finalCategoryId && description) {
-            // Ideally we would fetch categories and map them, but for now we'll just get the string
-            // In a real app, you'd match the string to the ID. 
-            // For this MVP, let's assume we might store category name or just ID. 
-            // Logic: Get category name from AI -> Find/Create Category -> Assign ID
+            // Stage 3: Use Merchant (description) + Items for categorization
+            const aiResult = await categorizeExpense(description, items || []);
 
-            const aiCategoryName = await categorizeExpense(description);
+            console.log("AI Categorization Result:", aiResult); // Debug log
 
-            let category = await prisma.category.findUnique({ where: { name: aiCategoryName } });
+            const categoryName = aiResult.primary_category;
+
+            let category = await prisma.category.findUnique({ where: { name: categoryName } });
             if (!category) {
-                category = await prisma.category.create({ data: { name: aiCategoryName } });
+                category = await prisma.category.create({ data: { name: categoryName } });
             }
             finalCategoryId = category.id;
         }
@@ -73,15 +73,29 @@ router.post('/scan', upload.single('receipt'), async (req, res) => {
     try {
         const { data: { text } } = await Tesseract.recognize(filePath, 'eng');
 
-        // Basic regex extraction (to be improved with AI)
-        const totalMatch = text.match(/total[\s\S]*?(\d+\.\d{2})/i);
-        const dateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+        // Use AI to extract structured data
+        const aiData = await extractReceiptDetails(text);
 
-        const extractedData = {
-            text,
-            amount: totalMatch ? totalMatch[1] : null,
-            date: dateMatch ? dateMatch[1] : null
-        };
+        let extractedData = {};
+
+        if (aiData) {
+            extractedData = {
+                text, // raw OCR for debug
+                amount: aiData.total,
+                date: aiData.transaction_date,
+                description: aiData.merchant_name, // Map merchant to description
+                details: aiData // Pass full AI details if needed
+            };
+        } else {
+            // Fallback to basic regex if AI fails
+            const totalMatch = text.match(/total[\s\S]*?(\d+\.\d{2})/i);
+            const dateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+            extractedData = {
+                text,
+                amount: totalMatch ? totalMatch[1] : null,
+                date: dateMatch ? dateMatch[1] : null
+            };
+        }
 
         // Cleanup uploaded file
         fs.unlinkSync(filePath);
@@ -92,6 +106,33 @@ router.post('/scan', upload.single('receipt'), async (req, res) => {
         // Cleanup on error
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         res.status(500).json({ error: 'OCR processing failed' });
+    }
+});
+
+// Get AI Insights
+router.get('/insights', async (req, res) => {
+    try {
+        // Fetch last 3 months of expenses
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        const expenses = await prisma.expense.findMany({
+            where: {
+                date: {
+                    gte: threeMonthsAgo
+                }
+            },
+            include: { category: true },
+            orderBy: { date: 'desc' }
+        });
+
+        const { generateFinancialInsights } = require('../services/aiService');
+        const insights = await generateFinancialInsights(expenses);
+
+        res.json(insights);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to generate insights' });
     }
 });
 

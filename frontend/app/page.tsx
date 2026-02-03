@@ -4,6 +4,8 @@ import { useState } from "react";
 import Dashboard from "@/components/Dashboard";
 import ExpenseForm from "@/components/ExpenseForm";
 import BudgetCard from "@/components/BudgetCard";
+import InsightsPanel from "@/components/InsightsPanel";
+import BudgetRecommendations from "@/components/BudgetRecommendations";
 
 export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -40,8 +42,15 @@ export default function Home() {
 
             <BudgetCard refreshTrigger={refreshTrigger} />
 
+            {/* AI Insights Panel */}
+            <InsightsPanel refreshTrigger={refreshTrigger} />
+
+            {/* AI Budget Recommendations */}
+            <BudgetRecommendations refreshTrigger={refreshTrigger} />
+
             {/* Summary Card */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+              {/* ... existing summary card content ... */}
               <div className="absolute top-0 right-0 p-4 opacity-10">
                 <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" /></svg>
               </div>

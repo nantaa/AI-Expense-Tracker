@@ -12,6 +12,7 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
         amount: "",
         date: new Date().toISOString().split("T")[0],
         userId: 1, // Hardcoded for MVP
+        items: [] as any[], // Store line items for advanced categorization
     });
     const [loading, setLoading] = useState(false);
     const [aiCategorizing, setAiCategorizing] = useState(false);
@@ -24,7 +25,7 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
         try {
             await api.post("/expenses", formData);
             onExpenseAdded();
-            setFormData({ ...formData, description: "", amount: "" });
+            setFormData({ ...formData, description: "", amount: "", items: [] });
         } catch (error) {
             console.error("Error adding expense:", error);
             alert("Failed to add expense");
@@ -33,12 +34,17 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
         }
     };
 
+    const [rawText, setRawText] = useState<string>("");
+
     const handleScanComplete = (data: any) => {
+        setRawText(data.text || "");
         setFormData((prev) => ({
             ...prev,
-            description: data.text ? data.text.substring(0, 50) + "..." : "Scanned Receipt",
+            // Use AI-extracted merchant name if available, else truncate raw text
+            description: data.description || (data.text ? data.text.substring(0, 50).replace(/\n/g, " ") + "..." : "Scanned Receipt"),
             amount: data.amount || prev.amount,
             date: data.date ? new Date(data.date).toISOString().split("T")[0] : prev.date,
+            items: data.details?.line_items || [], // Capture line items
         }));
     };
 
@@ -47,6 +53,15 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
             <h2 className="text-xl font-bold mb-4">Add New Expense</h2>
 
             <ReceiptUploader onScanComplete={handleScanComplete} />
+
+            {rawText && (
+                <details className="bg-gray-50 p-2 rounded text-xs border border-gray-200">
+                    <summary className="cursor-pointer font-semibold text-gray-600 mb-1">Raw OCR Debug</summary>
+                    <pre className="whitespace-pre-wrap text-gray-500 max-h-40 overflow-y-auto">
+                        {rawText}
+                    </pre>
+                </details>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div>

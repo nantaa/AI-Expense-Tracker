@@ -45,4 +45,28 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
+// Get AI Budget Recommendations
+router.get('/recommendations', authenticateToken, async (req, res) => {
+    try {
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        const expenses = await prisma.expense.findMany({
+            where: {
+                userId: req.user.userId,
+                date: { gte: threeMonthsAgo }
+            },
+            include: { category: true }
+        });
+
+        const { generateBudgetRecommendations } = require('../services/aiService');
+        const recommendations = await generateBudgetRecommendations(expenses);
+
+        res.json(recommendations);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to generate budget recommendations' });
+    }
+});
+
 module.exports = router;
