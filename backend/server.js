@@ -22,10 +22,14 @@ app.get('/api/health', (req, res) => {
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const budgetRoutes = require('./routes/budgets');
+const accountRoutes = require('./routes/accounts');
+const reportRoutes = require('./routes/reports');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/budgets', budgetRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

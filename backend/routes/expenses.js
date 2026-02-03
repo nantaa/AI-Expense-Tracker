@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 
 // Add new expense
 router.post('/', async (req, res) => {
-    const { description, amount, date, userId, categoryId, items } = req.body; // Added items
+    const { description, amount, date, userId, categoryId, items, accountId } = req.body; // Added accountId
     try {
 
         // AI Categorization if not provided
@@ -46,15 +46,29 @@ router.post('/', async (req, res) => {
             finalCategoryId = category.id;
         }
 
-        const expense = await prisma.expense.create({
-            data: {
-                description,
-                amount: parseFloat(amount),
-                date: new Date(date),
-                userId: parseInt(userId),
-                categoryId: finalCategoryId
+        // Transaction: Create Expense AND Update Account Balance
+        const expense = await prisma.$transaction(async (prisma) => {
+            const newExpense = await prisma.expense.create({
+                data: {
+                    description,
+                    amount: parseFloat(amount),
+                    date: new Date(date),
+                    userId: parseInt(userId),
+                    categoryId: finalCategoryId,
+                    accountId: accountId ? parseInt(accountId) : null
+                }
+            });
+
+            if (accountId) {
+                await prisma.account.update({
+                    where: { id: parseInt(accountId) },
+                    data: { balance: { decrement: parseFloat(amount) } }
+                });
             }
+
+            return newExpense;
         });
+
         res.json(expense);
     } catch (error) {
         console.error(error);

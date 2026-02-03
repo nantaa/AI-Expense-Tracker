@@ -6,6 +6,7 @@ import ExpenseForm from "@/components/ExpenseForm";
 import BudgetCard from "@/components/BudgetCard";
 import InsightsPanel from "@/components/InsightsPanel";
 import BudgetRecommendations from "@/components/BudgetRecommendations";
+import WalletCard from "@/components/WalletCard";
 
 export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -27,8 +28,24 @@ export default function Home() {
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
-            <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">
-              Export Report
+            <button
+              onClick={async () => {
+                try {
+                  const res = await api.get('/reports/export?format=csv', { responseType: 'blob' });
+                  const url = window.URL.createObjectURL(new Blob([res.data]));
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', `expenses_report_${new Date().toISOString().split('T')[0]}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                } catch (e) {
+                  alert('Export failed');
+                }
+              }}
+              className="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              Export CSV
             </button>
             <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg border-2 border-white"></div>
           </div>
@@ -39,6 +56,8 @@ export default function Home() {
             <div className="glass-card p-1 rounded-2xl shadow-xl">
               <ExpenseForm onExpenseAdded={handleExpenseAdded} />
             </div>
+
+            <WalletCard refreshTrigger={refreshTrigger} />
 
             <BudgetCard refreshTrigger={refreshTrigger} />
 

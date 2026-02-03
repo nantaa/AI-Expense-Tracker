@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import ReceiptUploader from "./ReceiptUploader";
 import { Loader2 } from "lucide-react";
@@ -11,21 +11,24 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
         description: "",
         amount: "",
         date: new Date().toISOString().split("T")[0],
-        userId: 1, // Hardcoded for MVP
-        items: [] as any[], // Store line items for advanced categorization
+        userId: 1,
+        items: [] as any[],
+        accountId: "", // New field
     });
     const [loading, setLoading] = useState(false);
-    const [aiCategorizing, setAiCategorizing] = useState(false);
+    const [accounts, setAccounts] = useState<any[]>([]);
+
+    useEffect(() => {
+        api.get("/accounts").then(res => setAccounts(res.data)).catch(console.error);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        // Optimistic AI categorization notice locally? Or just wait for server.
-        // Server handles AI on POST.
         try {
             await api.post("/expenses", formData);
             onExpenseAdded();
-            setFormData({ ...formData, description: "", amount: "", items: [] });
+            setFormData({ ...formData, description: "", amount: "", items: [] }); // Keep account selected? or reset
         } catch (error) {
             console.error("Error adding expense:", error);
             alert("Failed to add expense");
@@ -40,17 +43,19 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
         setRawText(data.text || "");
         setFormData((prev) => ({
             ...prev,
-            // Use AI-extracted merchant name if available, else truncate raw text
             description: data.description || (data.text ? data.text.substring(0, 50).replace(/\n/g, " ") + "..." : "Scanned Receipt"),
             amount: data.amount || prev.amount,
             date: data.date ? new Date(data.date).toISOString().split("T")[0] : prev.date,
-            items: data.details?.line_items || [], // Capture line items
+            items: data.details?.line_items || [],
         }));
     };
 
     return (
-        <div className="p-6 bg-white rounded-xl shadow-md space-y-4">
-            <h2 className="text-xl font-bold mb-4">Add New Expense</h2>
+        <div className="glass-card p-6 rounded-2xl shadow-xl space-y-4 relative overflow-hidden">
+            {/* Visual Header */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+
+            <h2 className="text-xl font-black text-gray-800 mb-4">Add New Expense</h2>
 
             <ReceiptUploader onScanComplete={handleScanComplete} />
 
@@ -63,49 +68,68 @@ export default function ExpenseForm({ onExpenseAdded }: { onExpenseAdded: () => 
                 </details>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <form onSubmit={handleSubmit} className="space-y-4 mt-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Description</label>
                     <input
                         type="text"
                         required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all p-3 text-sm font-medium"
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         placeholder="e.g. Starbucks Coffee"
                     />
-                    <p className="text-xs text-blue-500 mt-1">AI will auto-categorize this.</p>
+                    <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1">
+                        ✨ AI will auto-categorize this
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Amount</label>
-                        <input
-                            type="number"
-                            required
-                            step="0.01"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                            value={formData.amount}
-                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        />
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-3 text-gray-400">$</span>
+                            <input
+                                type="number"
+                                required
+                                step="0.01"
+                                className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all p-3 pl-7 text-sm font-bold"
+                                value={formData.amount}
+                                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                            />
+                        </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Date</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Date</label>
                         <input
                             type="date"
                             required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                            className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all p-3 text-sm font-medium"
                             value={formData.date}
                             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         />
                     </div>
                 </div>
 
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Paid From</label>
+                    <select
+                        className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all p-3 text-sm font-medium"
+                        value={formData.accountId}
+                        onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
+                    >
+                        <option value="">Select Wallet (Optional)</option>
+                        {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name} (${acc.balance})</option>
+                        ))}
+                    </select>
+                </div>
+
                 <button
                     type="submit"
                     disabled={loading}
                     className={cn(
-                        "w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+                        "w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-blue-500/30 transition-all transform hover:-translate-y-0.5",
                         loading ? "opacity-50 cursor-not-allowed" : ""
                     )}
                 >
