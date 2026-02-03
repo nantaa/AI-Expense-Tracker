@@ -1,0 +1,36 @@
+@echo off
+echo ===================================================
+echo   AI Expense Tracker Setup & Start Script
+echo ===================================================
+
+echo.
+echo [1/3] Checking Backend Environment...
+if not exist "backend\.env" (
+    echo [ERROR] backend\.env not found! 
+    echo Please copy backend\.env.example or create one.
+    goto :error
+)
+
+echo.
+echo [2/3] Taking care of Database...
+cd backend
+echo Running Prisma generation...
+call npx prisma generate
+cd ..
+
+echo.
+echo [3/3] Starting Services...
+echo.
+echo Starting Backend (Background)...
+start "Backend Server" /d "backend" npm start
+
+echo Starting Frontend...
+cd frontend
+call npm run dev
+
+goto :eof
+
+:error
+echo.
+echo [FAILURE] Setup failed. Please check the errors above.
+pause
