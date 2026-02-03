@@ -5,23 +5,21 @@ dotenv.config();
 async function testModels() {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     // Add gemini-pro (v1.0) and new 002 variants
-    const models = ["gemini-pro", "gemini-1.5-flash", "gemini-1.5-flash-001", "gemini-1.5-flash-002", "gemini-1.5-flash-8b"];
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-    for (const modelName of models) {
-        try {
-            console.log(`Testing ${modelName}...`);
-            const model = genAI.getGenerativeModel({ model: modelName });
 
-            const prompt = "Hello";
-            await model.generateContent(prompt);
-            console.log(`✅ SUCCESS: ${modelName} is working.`);
-            // Continue to see ALL working models
-        } catch (error) {
-            // Log status code if possible
-            const status = error.message.match(/\[(\d+) /)?.[1] || "Unknown";
-            console.log(`❌ FAILED: ${modelName} (${status})`);
-        }
-    }
+    const prompt = `Analyze these expenses and provide insights: ${JSON.stringify(expenses)}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    return JSON.parse(text);
+} 
+    catch (error) {
+    console.error('AI Insights Error:', error);
+    throw error;
 }
+
 
 testModels();
