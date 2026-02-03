@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Dashboard from "@/components/Dashboard";
 import ExpenseForm from "@/components/ExpenseForm";
+import BudgetCard from "@/components/BudgetCard";
 
 export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -36,6 +37,8 @@ export default function Home() {
             <div className="glass-card p-1 rounded-2xl shadow-xl">
               <ExpenseForm onExpenseAdded={handleExpenseAdded} />
             </div>
+
+            <BudgetCard refreshTrigger={refreshTrigger} />
 
             {/* Summary Card */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">

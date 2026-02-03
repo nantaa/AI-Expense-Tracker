@@ -18,8 +18,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // Import Routes
+// Import Routes
+const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
-// app.use('/api/expenses', expenseRoutes); // Uncomment when created
+const budgetRoutes = require('./routes/budgets');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/budgets', budgetRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -1,6 +1,9 @@
 @echo off
+setlocal
+cd /d "%~dp0"
+
 echo ===================================================
-echo   AI Expense Tracker Setup & Start Script
+echo   AI Expense Tracker Setup and Start Script
 echo ===================================================
 
 echo.
@@ -14,6 +17,8 @@ if not exist "backend\.env" (
 echo.
 echo [2/3] Taking care of Database...
 cd backend
+echo Running Prisma DB Push...
+call npx prisma db push
 echo Running Prisma generation...
 call npx prisma generate
 cd ..
@@ -22,7 +27,8 @@ echo.
 echo [3/3] Starting Services...
 echo.
 echo Starting Backend (Background)...
-start "Backend Server" /d "backend" npm start
+:: Open a new window for the backend
+start "Backend Server" cmd /k "cd /d "%~dp0backend" && npm start"
 
 echo Starting Frontend...
 cd frontend
